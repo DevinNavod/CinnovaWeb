@@ -89,22 +89,59 @@ const initContactForm = () => {
     const contactForm = document.getElementById('contactForm');
     if (!contactForm) return;
 
-    contactForm.addEventListener('submit', function(e) {
+    contactForm.addEventListener('submit', async function(e) {
         e.preventDefault();
-        
-        // Get form data
-        const formData = new FormData(this);
-        const formObject = {};
-        formData.forEach((value, key) => {
-            formObject[key] = value;
-        });
 
-        // Here you would typically send the form data to a server
-        console.log('Form submitted:', formObject);
-        
-        // Show success message
-        alert('Thank you for your message! We will get back to you soon.');
-        this.reset();
+        const alertBox = document.getElementById('contactAlert');
+        const submitBtn = contactForm.querySelector('button[type="submit"]');
+        if (alertBox) {
+            alertBox.className = 'alert d-none';
+            alertBox.textContent = '';
+        }
+
+        // Disable button during submit
+        if (submitBtn) {
+            submitBtn.disabled = true;
+        }
+
+        try {
+            const response = await fetch(contactForm.action, {
+                method: 'POST',
+                body: new FormData(contactForm),
+                headers: { 'Accept': 'application/json' }
+            });
+
+            if (response.ok) {
+                if (alertBox) {
+                    alertBox.className = 'alert alert-success';
+                    alertBox.textContent = 'Thank you! Your message has been sent.';
+                }
+                contactForm.reset();
+            } else {
+                // Try to parse errors from Formspree
+                let message = 'Something went wrong. Please try again later.';
+                try {
+                    const data = await response.json();
+                    if (data && data.errors && data.errors.length) {
+                        message = data.errors.map(e => e.message).join(', ');
+                    }
+                } catch (_) { /* ignore json parse errors */ }
+
+                if (alertBox) {
+                    alertBox.className = 'alert alert-danger';
+                    alertBox.textContent = message;
+                }
+            }
+        } catch (error) {
+            if (alertBox) {
+                alertBox.className = 'alert alert-danger';
+                alertBox.textContent = 'Network error. Please check your connection and try again.';
+            }
+        } finally {
+            if (submitBtn) {
+                submitBtn.disabled = false;
+            }
+        }
     });
 };
 
